@@ -143,6 +143,15 @@
             text-align: center;
         }
         
+        .error-message {
+            padding: 20px;
+            background-color: #f8d7da;
+            color: #721c24;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
         .logo {
             text-align: center;
             margin-bottom: 20px;
@@ -189,6 +198,13 @@
             color: #155724;
         }
         
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+            font-style: italic;
+            color: #666;
+        }
+        
         @media (max-width: 768px) {
             .filters {
                 flex-direction: column;
@@ -223,6 +239,10 @@
             <button id="adminTabBtn" class="tab-button">Admin Access</button>
         </div>
         
+        <div id="errorMessage" class="error-message hidden">
+            Error connecting to booking service. Please try again later.
+        </div>
+        
         <div id="bookingTab" class="booking-form">
             <h2>Book a Venue</h2>
             <form id="bookingForm">
@@ -236,14 +256,14 @@
                     <div class="time-input-group">
                         <div class="time-input">
                             <label for="startTime">Start Time:</label>
-                            <input type="time" id="startTime" required min="08:00" max="19:00">
+                            <input type="time" id="startTime" required min="08:00" max="21:00">
                         </div>
                         <div class="time-input">
                             <label for="endTime">End Time:</label>
-                            <input type="time" id="endTime" required min="09:00" max="20:00">
+                            <input type="time" id="endTime" required min="09:00" max="22:00">
                         </div>
                     </div>
-                    <small>Operating hours: 08:00 - 20:00</small>
+                    <small>Operating hours: 08:00 - 22:00</small>
                 </div>
                 
                 <div class="form-group">
@@ -281,11 +301,11 @@
                     <textarea id="notes"></textarea>
                 </div>
                 
-                <button type="submit">Book Venue</button>
+                <button type="submit" id="submitBookingBtn">Book Venue</button>
             </form>
             
             <div id="confirmationMessage" class="confirmation-message hidden">
-                Thank you for your booking request! We will confirm your booking after your payment.
+                Thank you for your booking request! We will confirm your booking after your payment. For enquiries, please email tiaic@tembusutech.com.sg 
             </div>
         </div>
         
@@ -337,6 +357,8 @@
                     </div>
                 </div>
                 
+                <div id="loadingMessage" class="loading">Loading bookings...</div>
+                
                 <table id="bookingsTable">
                     <thead>
                         <tr>
@@ -362,8 +384,12 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Get stored bookings or initialize empty array
-            let bookings = JSON.parse(localStorage.getItem('bookings')) || [];
+            // API endpoint for centralized booking system
+            const API_URL = 'https://api.tiaic.tembusutech.com.sg/bookings';
+            
+            // For demonstration - we'll simulate the API functionality
+            // In a real implementation, you would replace this with actual API calls
+            let SERVER_BOOKINGS = JSON.parse(localStorage.getItem('server_bookings')) || [];
             
             // DOM elements
             const bookingForm = document.getElementById('bookingForm');
@@ -372,8 +398,11 @@
             const filterVenue = document.getElementById('filterVenue');
             const filterStatus = document.getElementById('filterStatus');
             const confirmationMessage = document.getElementById('confirmationMessage');
+            const errorMessage = document.getElementById('errorMessage');
+            const loadingMessage = document.getElementById('loadingMessage');
             const startTime = document.getElementById('startTime');
             const endTime = document.getElementById('endTime');
+            const submitBookingBtn = document.getElementById('submitBookingBtn');
             
             // Tabs
             const bookingTab = document.getElementById('bookingTab');
@@ -397,144 +426,249 @@
                 return new Date(dateString).toLocaleDateString(undefined, options);
             }
             
-            // Display bookings in the table
-            function displayBookings() {
-                // Clear the table
-                bookingsTable.innerHTML = '';
-                
-                // Get filter values
-                const dateFilter = filterDate.value;
-                const venueFilter = filterVenue.value;
-                const statusFilter = filterStatus.value;
-                
-                // Filter bookings
-                let filteredBookings = bookings;
-                
-                if (dateFilter) {
-                    filteredBookings = filteredBookings.filter(booking => booking.eventDate === dateFilter);
-                }
-                
-                if (venueFilter) {
-                    filteredBookings = filteredBookings.filter(booking => booking.venue === venueFilter);
-                }
-                
-                if (statusFilter) {
-                    filteredBookings = filteredBookings.filter(booking => booking.status === statusFilter);
-                }
-                
-                // Sort bookings by date (most recent first)
-                filteredBookings.sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
-                
-                // Add bookings to table
-                if (filteredBookings.length === 0) {
-                    const row = bookingsTable.insertRow();
-                    const cell = row.insertCell(0);
-                    cell.colSpan = 10;
-                    cell.textContent = 'No bookings found';
-                    cell.style.textAlign = 'center';
-                    return;
-                }
-                
-                filteredBookings.forEach((booking, index) => {
-                    const row = bookingsTable.insertRow();
+            // Generate a unique ID for bookings
+            function generateId() {
+                return 'booking_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            }
+            
+            // API functions (simulated for now)
+            async function fetchBookings() {
+                try {
+                    // Simulate a network request with a slight delay
+                    await new Promise(resolve => setTimeout(resolve, 500));
                     
-                    // Add class for confirmed bookings
-                    if (booking.status === 'confirmed') {
-                        row.classList.add('confirmed-booking');
+                    // In a real implementation, this would be:
+                    // const response = await fetch(API_URL);
+                    // const data = await response.json();
+                    // return data;
+                    
+                    // For demonstration, we'll use localStorage to simulate server storage
+                    return SERVER_BOOKINGS;
+                } catch (error) {
+                    console.error('Error fetching bookings:', error);
+                    errorMessage.textContent = 'Error fetching bookings. Please try again later.';
+                    errorMessage.classList.remove('hidden');
+                    return [];
+                }
+            }
+            
+            async function createBooking(bookingData) {
+                try {
+                    // Simulate a network request
+                    await new Promise(resolve => setTimeout(resolve, 700));
+                    
+                    // Add a unique ID to the booking
+                    bookingData.id = generateId();
+                    
+                    // In a real implementation, this would be:
+                    // const response = await fetch(API_URL, {
+                    //     method: 'POST',
+                    //     headers: { 'Content-Type': 'application/json' },
+                    //     body: JSON.stringify(bookingData)
+                    // });
+                    // return await response.json();
+                    
+                    // For demonstration
+                    SERVER_BOOKINGS.push(bookingData);
+                    localStorage.setItem('server_bookings', JSON.stringify(SERVER_BOOKINGS));
+                    return bookingData;
+                } catch (error) {
+                    console.error('Error creating booking:', error);
+                    errorMessage.textContent = 'Error saving your booking. Please try again later.';
+                    errorMessage.classList.remove('hidden');
+                    throw error;
+                }
+            }
+            
+            async function updateBooking(id, updatedData) {
+                try {
+                    // Simulate a network request
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    // In a real implementation, this would be:
+                    // const response = await fetch(`${API_URL}/${id}`, {
+                    //     method: 'PUT',
+                    //     headers: { 'Content-Type': 'application/json' },
+                    //     body: JSON.stringify(updatedData)
+                    // });
+                    // return await response.json();
+                    
+                    // For demonstration
+                    const index = SERVER_BOOKINGS.findIndex(b => b.id === id);
+                    if (index !== -1) {
+                        SERVER_BOOKINGS[index] = { ...SERVER_BOOKINGS[index], ...updatedData };
+                        localStorage.setItem('server_bookings', JSON.stringify(SERVER_BOOKINGS));
+                        return SERVER_BOOKINGS[index];
+                    }
+                    throw new Error('Booking not found');
+                } catch (error) {
+                    console.error('Error updating booking:', error);
+                    errorMessage.textContent = 'Error updating booking. Please try again later.';
+                    errorMessage.classList.remove('hidden');
+                    throw error;
+                }
+            }
+            
+            async function deleteBooking(id) {
+                try {
+                    // Simulate a network request
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    // In a real implementation, this would be:
+                    // const response = await fetch(`${API_URL}/${id}`, {
+                    //     method: 'DELETE'
+                    // });
+                    // return response.ok;
+                    
+                    // For demonstration
+                    const index = SERVER_BOOKINGS.findIndex(b => b.id === id);
+                    if (index !== -1) {
+                        SERVER_BOOKINGS.splice(index, 1);
+                        localStorage.setItem('server_bookings', JSON.stringify(SERVER_BOOKINGS));
+                        return true;
+                    }
+                    throw new Error('Booking not found');
+                } catch (error) {
+                    console.error('Error deleting booking:', error);
+                    errorMessage.textContent = 'Error cancelling booking. Please try again later.';
+                    errorMessage.classList.remove('hidden');
+                    throw error;
+                }
+            }
+            
+            // Display bookings in the table
+            async function displayBookings() {
+                try {
+                    loadingMessage.classList.remove('hidden');
+                    bookingsTable.innerHTML = '';
+                    
+                    // Get bookings from API
+                    const bookings = await fetchBookings();
+                    
+                    // Get filter values
+                    const dateFilter = filterDate.value;
+                    const venueFilter = filterVenue.value;
+                    const statusFilter = filterStatus.value;
+                    
+                    // Filter bookings
+                    let filteredBookings = bookings;
+                    
+                    if (dateFilter) {
+                        filteredBookings = filteredBookings.filter(booking => booking.eventDate === dateFilter);
                     }
                     
-                    row.insertCell(0).textContent = formatDate(booking.eventDate);
-                    row.insertCell(1).textContent = `${booking.startTime} - ${booking.endTime}`;
-                    row.insertCell(2).textContent = booking.venue;
-                    row.insertCell(3).textContent = booking.groupSize;
-                    row.insertCell(4).textContent = booking.bookedBy;
-                    row.insertCell(5).textContent = booking.email;
+                    if (venueFilter) {
+                        filteredBookings = filteredBookings.filter(booking => booking.venue === venueFilter);
+                    }
                     
-                    // Status cell
-                    const statusCell = row.insertCell(6);
-                    const statusLabel = document.createElement('span');
-                    statusLabel.textContent = booking.status === 'confirmed' ? 'Confirmed' : 'Pending';
-                    statusLabel.classList.add('status-label');
-                    statusLabel.classList.add(booking.status === 'confirmed' ? 'status-confirmed' : 'status-pending');
-                    statusCell.appendChild(statusLabel);
+                    if (statusFilter) {
+                        filteredBookings = filteredBookings.filter(booking => booking.status === statusFilter);
+                    }
                     
-                    // Notes cell
-                    row.insertCell(7).textContent = booking.notes || '';
+                    // Sort bookings by date (most recent first)
+                    filteredBookings.sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
                     
-                    // Admin notes cell
-                    const adminNotesCell = row.insertCell(8);
-                    const adminNotesInput = document.createElement('textarea');
-                    adminNotesInput.value = booking.adminNotes || '';
-                    adminNotesInput.rows = 2;
-                    adminNotesInput.style.width = '100%';
-                    adminNotesInput.addEventListener('change', function() {
-                        // Update the booking with the new admin notes
-                        const bookingIndex = bookings.findIndex(b => 
-                            b.eventDate === booking.eventDate && 
-                            b.venue === booking.venue && 
-                            b.startTime === booking.startTime &&
-                            b.endTime === booking.endTime &&
-                            b.bookedBy === booking.bookedBy
-                        );
+                    loadingMessage.classList.add('hidden');
+                    
+                    // Add bookings to table
+                    if (filteredBookings.length === 0) {
+                        const row = bookingsTable.insertRow();
+                        const cell = row.insertCell(0);
+                        cell.colSpan = 10;
+                        cell.textContent = 'No bookings found';
+                        cell.style.textAlign = 'center';
+                        return;
+                    }
+                    
+                    filteredBookings.forEach((booking) => {
+                        const row = bookingsTable.insertRow();
                         
-                        if (bookingIndex !== -1) {
-                            bookings[bookingIndex].adminNotes = adminNotesInput.value;
-                            localStorage.setItem('bookings', JSON.stringify(bookings));
+                        // Add class for confirmed bookings
+                        if (booking.status === 'confirmed') {
+                            row.classList.add('confirmed-booking');
                         }
-                    });
-                    adminNotesCell.appendChild(adminNotesInput);
-                    
-                    // Actions cell
-                    const actionsCell = row.insertCell(9);
-                    const actionsDiv = document.createElement('div');
-                    actionsDiv.className = 'action-buttons';
-                    
-                    // Cancel button
-                    const deleteButton = document.createElement('button');
-                    deleteButton.textContent = 'Cancel';
-                    deleteButton.style.backgroundColor = '#e74c3c';
-                    deleteButton.onclick = function() {
-                        if (confirm('Are you sure you want to cancel this booking?')) {
-                            bookings.splice(bookings.findIndex(b => 
-                                b.eventDate === booking.eventDate && 
-                                b.venue === booking.venue && 
-                                b.startTime === booking.startTime &&
-                                b.endTime === booking.endTime &&
-                                b.bookedBy === booking.bookedBy
-                            ), 1);
-                            localStorage.setItem('bookings', JSON.stringify(bookings));
-                            displayBookings();
-                        }
-                    };
-                    actionsDiv.appendChild(deleteButton);
-                    
-                    // Confirm button - only show if not already confirmed
-                    if (booking.status !== 'confirmed') {
-                        const confirmButton = document.createElement('button');
-                        confirmButton.textContent = 'Confirm';
-                        confirmButton.style.backgroundColor = '#27ae60';
-                        confirmButton.onclick = function() {
-                            if (confirm('Confirm this booking? This will block this time slot from future bookings.')) {
-                                const bookingIndex = bookings.findIndex(b => 
-                                    b.eventDate === booking.eventDate && 
-                                    b.venue === booking.venue && 
-                                    b.startTime === booking.startTime &&
-                                    b.endTime === booking.endTime &&
-                                    b.bookedBy === booking.bookedBy
-                                );
-                                
-                                if (bookingIndex !== -1) {
-                                    bookings[bookingIndex].status = 'confirmed';
-                                    localStorage.setItem('bookings', JSON.stringify(bookings));
+                        
+                        row.insertCell(0).textContent = formatDate(booking.eventDate);
+                        row.insertCell(1).textContent = `${booking.startTime} - ${booking.endTime}`;
+                        row.insertCell(2).textContent = booking.venue;
+                        row.insertCell(3).textContent = booking.groupSize;
+                        row.insertCell(4).textContent = booking.bookedBy;
+                        row.insertCell(5).textContent = booking.email;
+                        
+                        // Status cell
+                        const statusCell = row.insertCell(6);
+                        const statusLabel = document.createElement('span');
+                        statusLabel.textContent = booking.status === 'confirmed' ? 'Confirmed' : 'Pending';
+                        statusLabel.classList.add('status-label');
+                        statusLabel.classList.add(booking.status === 'confirmed' ? 'status-confirmed' : 'status-pending');
+                        statusCell.appendChild(statusLabel);
+                        
+                        // Notes cell
+                        row.insertCell(7).textContent = booking.notes || '';
+                        
+                        // Admin notes cell
+                        const adminNotesCell = row.insertCell(8);
+                        const adminNotesInput = document.createElement('textarea');
+                        adminNotesInput.value = booking.adminNotes || '';
+                        adminNotesInput.rows = 2;
+                        adminNotesInput.style.width = '100%';
+                        adminNotesInput.addEventListener('change', async function() {
+                            try {
+                                await updateBooking(booking.id, { 
+                                    adminNotes: adminNotesInput.value 
+                                });
+                            } catch (error) {
+                                console.error('Failed to update admin notes:', error);
+                            }
+                        });
+                        adminNotesCell.appendChild(adminNotesInput);
+                        
+                        // Actions cell
+                        const actionsCell = row.insertCell(9);
+                        const actionsDiv = document.createElement('div');
+                        actionsDiv.className = 'action-buttons';
+                        
+                        // Cancel button
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = 'Cancel';
+                        deleteButton.style.backgroundColor = '#e74c3c';
+                        deleteButton.onclick = async function() {
+                            if (confirm('Are you sure you want to cancel this booking?')) {
+                                try {
+                                    await deleteBooking(booking.id);
                                     displayBookings();
+                                } catch (error) {
+                                    console.error('Failed to cancel booking:', error);
                                 }
                             }
                         };
-                        actionsDiv.appendChild(confirmButton);
-                    }
-                    
-                    actionsCell.appendChild(actionsDiv);
-                });
+                        actionsDiv.appendChild(deleteButton);
+                        
+                        // Confirm button - only show if not already confirmed
+                        if (booking.status !== 'confirmed') {
+                            const confirmButton = document.createElement('button');
+                            confirmButton.textContent = 'Confirm';
+                            confirmButton.style.backgroundColor = '#27ae60';
+                            confirmButton.onclick = async function() {
+                                if (confirm('Confirm this booking? This will block this time slot from future bookings.')) {
+                                    try {
+                                        await updateBooking(booking.id, { status: 'confirmed' });
+                                        displayBookings();
+                                    } catch (error) {
+                                        console.error('Failed to confirm booking:', error);
+                                    }
+                                }
+                            };
+                            actionsDiv.appendChild(confirmButton);
+                        }
+                        
+                        actionsCell.appendChild(actionsDiv);
+                    });
+                } catch (error) {
+                    console.error('Error displaying bookings:', error);
+                    loadingMessage.classList.add('hidden');
+                    errorMessage.classList.remove('hidden');
+                }
             }
             
             // Check if two time ranges overlap
@@ -549,116 +683,122 @@
             }
             
             // Check if there's a confirmed booking that conflicts with the requested time
-            function hasConfirmedBookingConflict(date, venue, startTime, endTime) {
-                return bookings.some(booking => 
-                    booking.eventDate === date && 
-                    booking.venue === venue && 
-                    booking.status === 'confirmed' && 
-                    isTimeOverlap(startTime, endTime, booking.startTime, booking.endTime)
-                );
+            async function hasBookingConflict(date, venue, startTime, endTime) {
+                try {
+                    const bookings = await fetchBookings();
+                    
+                    return bookings.some(booking => 
+                        booking.eventDate === date && 
+                        booking.venue === venue && 
+                        isTimeOverlap(startTime, endTime, booking.startTime, booking.endTime)
+                    );
+                } catch (error) {
+                    console.error('Error checking for booking conflicts:', error);
+                    return false;
+                }
             }
             
             // Handle form submission
-            bookingForm.addEventListener('submit', function(e) {
+            bookingForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 
-                const eventDate = document.getElementById('eventDate').value;
-                const startTimeValue = document.getElementById('startTime').value;
-                const endTimeValue = document.getElementById('endTime').value;
-                const venue = document.getElementById('venue').value;
-                const groupSize = document.getElementById('groupSize').value;
-                const bookedBy = document.getElementById('bookedBy').value;
-                const email = document.getElementById('email').value;
-                const notes = document.getElementById('notes').value;
+                // Disable submit button to prevent double submission
+                submitBookingBtn.disabled = true;
+                submitBookingBtn.textContent = 'Processing...';
                 
-                // Validate time inputs
-                if (!startTimeValue || !endTimeValue) {
-                    alert('Please select both start and end times');
-                    return;
-                }
-                
-                // Check if end time is after start time
-                if (!isValidBookingTime(startTimeValue, endTimeValue)) {
-                    alert('End time must be after start time');
-                    return;
-                }
-                
-                // Basic validation for group size
-                const maxCapacity = {
-                    'Training Room': 24,
-                    'Roadshow Room': 50,
-                    'Meeting Room A': 10,
-                    'Meeting Room B': 6,
-                    'Meeting Room VIP': 8,
-                    'Pantry Area': 10,
-                    'Open Coach Space': 20,
-                    'Tea Room': 20
-                };
-                
-                if (parseInt(groupSize) > maxCapacity[venue]) {
-                    alert(`This venue has a maximum capacity of ${maxCapacity[venue]} people. Please select a different venue or reduce your group size.`);
-                    return;
-                }
-                
-                // Validate email format
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(email)) {
-                    alert('Please enter a valid email address');
-                    return;
-                }
-                
-                // Check for confirmed booking conflicts
-                if (hasConfirmedBookingConflict(eventDate, venue, startTimeValue, endTimeValue)) {
-                    alert('This venue already has a confirmed booking that overlaps with your selected time period. Please choose a different time or venue.');
-                    return;
-                }
-                
-                // Check for existing bookings (pending) on the same date and venue with overlapping times
-                let timeConflict = false;
-                
-                bookings.forEach(booking => {
-                    if (booking.eventDate === eventDate && booking.venue === venue) {
-                        // Check for time conflicts with pending bookings
-                        if (booking.status === 'pending' && isTimeOverlap(startTimeValue, endTimeValue, booking.startTime, booking.endTime)) {
-                            timeConflict = true;
-                        }
+                try {
+                    const eventDate = document.getElementById('eventDate').value;
+                    const startTimeValue = document.getElementById('startTime').value;
+                    const endTimeValue = document.getElementById('endTime').value;
+                    const venue = document.getElementById('venue').value;
+                    const groupSize = document.getElementById('groupSize').value;
+                    const bookedBy = document.getElementById('bookedBy').value;
+                    const email = document.getElementById('email').value;
+                    const notes = document.getElementById('notes').value;
+                    
+                    // Hide any previous error messages
+                    errorMessage.classList.add('hidden');
+                    
+                    // Validate time inputs
+                    if (!startTimeValue || !endTimeValue) {
+                        alert('Please select both start and end times');
+                        return;
                     }
-                });
-                
-                if (timeConflict) {
-                    alert(`This venue already has a pending booking that overlaps with your selected time period. Please choose a different time or venue.`);
-                    return;
+                    
+                    // Check if end time is after start time
+                    if (!isValidBookingTime(startTimeValue, endTimeValue)) {
+                        alert('End time must be after start time');
+                        return;
+                    }
+                    
+                    // Basic validation for group size
+                    const maxCapacity = {
+                        'Training Room': 24,
+                        'Roadshow Room': 50,
+                        'Meeting Room A': 10,
+                        'Meeting Room B': 6,
+                        'Meeting Room VIP': 8,
+                        'Pantry Area': 10,
+                        'Open Coach Space': 20,
+                        'Tea Room': 20
+                    };
+                    
+                    if (parseInt(groupSize) > maxCapacity[venue]) {
+                        alert(`This venue has a maximum capacity of ${maxCapacity[venue]} people. Please select a different venue or reduce your group size.`);
+                        return;
+                    }
+                    
+                    // Validate email format
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(email)) {
+                        alert('Please enter a valid email address');
+                        return;
+                    }
+                    
+                    // Check for booking conflicts
+                    const hasConflict = await hasBookingConflict(eventDate, venue, startTimeValue, endTimeValue);
+                    
+                    if (hasConflict) {
+                        alert('This venue already has a booking that overlaps with your selected time period. Please choose a different time or venue.');
+                        return;
+                    }
+                    
+                    // Create new booking with pending status
+                    const newBooking = {
+                        eventDate,
+                        startTime: startTimeValue,
+                        endTime: endTimeValue,
+                        venue,
+                        groupSize,
+                        bookedBy,
+                        email,
+                        notes,
+                        adminNotes: '',
+                        status: 'pending',
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    // Save to the centralized system
+                    await createBooking(newBooking);
+                    
+                    // Reset form and show confirmation
+                    bookingForm.reset();
+                    bookingForm.style.display = 'none';
+                    confirmationMessage.classList.remove('hidden');
+                    
+                    // Reset form after 5 seconds
+                    setTimeout(() => {
+                        bookingForm.style.display = 'block';
+                        confirmationMessage.classList.add('hidden');
+                    }, 5000);
+                } catch (error) {
+                    console.error('Error submitting booking:', error);
+                    errorMessage.classList.remove('hidden');
+                } finally {
+                    // Re-enable the submit button
+                    submitBookingBtn.disabled = false;
+                    submitBookingBtn.textContent = 'Book Venue';
                 }
-                
-                // Add new booking with pending status
-                const newBooking = {
-                    eventDate,
-                    startTime: startTimeValue,
-                    endTime: endTimeValue,
-                    venue,
-                    groupSize,
-                    bookedBy,
-                    email,
-                    notes,
-                    adminNotes: '',
-                    status: 'pending'
-                };
-                
-                bookings.push(newBooking);
-                
-                // Save to localStorage
-                localStorage.setItem('bookings', JSON.stringify(bookings));
-                
-                // Reset form and show confirmation
-                bookingForm.reset();
-                bookingForm.style.display = 'none';
-                confirmationMessage.classList.remove('hidden');
-                
-                // Reset form after 5 seconds
-                setTimeout(() => {
-                    bookingForm.style.display = 'block';
-                    confirmationMessage.classList.add('hidden');
-                }, 5000);
             });
             
             // Set up filter change handlers
@@ -672,6 +812,7 @@
                 adminTab.classList.add('hidden');
                 bookingTabBtn.classList.add('active');
                 adminTabBtn.classList.remove('active');
+                errorMessage.classList.add('hidden');
             });
             
             adminTabBtn.addEventListener('click', function() {
@@ -679,6 +820,7 @@
                 adminTab.classList.remove('hidden');
                 bookingTabBtn.classList.remove('active');
                 adminTabBtn.classList.add('active');
+                errorMessage.classList.add('hidden');
             });
             
             // Admin login
@@ -687,6 +829,8 @@
                     adminLogin.classList.add('hidden');
                     bookingsList.classList.remove('hidden');
                     displayBookings();
+                    // Save login state (in a real app, use a proper auth token)
+                    sessionStorage.setItem('isAdminLoggedIn', 'true');
                 } else {
                     alert('Incorrect password. Access denied.');
                 }
@@ -697,31 +841,564 @@
                 adminLogin.classList.remove('hidden');
                 bookingsList.classList.add('hidden');
                 adminPassword.value = '';
+                // Clear login state
+                sessionStorage.removeItem('isAdminLoggedIn');
             });
             
             // Set minimum date to today
             const today = new Date().toISOString().split('T')[0];
-            document.getElementById('eventDate').min = today;
+            document.getElementById('eventDate').
+document.addEventListener('DOMContentLoaded', function() {
+    // API endpoint for centralized booking system
+    const API_URL = 'https://api.tiaic.tembusutech.com.sg/bookings';
+    
+    // For demonstration - we'll simulate the API functionality
+    // In a real implementation, you would replace this with actual API calls
+    let SERVER_BOOKINGS = JSON.parse(localStorage.getItem('server_bookings')) || [];
+    
+    // DOM elements
+    const bookingForm = document.getElementById('bookingForm');
+    const bookingsTable = document.getElementById('bookingsTable').getElementsByTagName('tbody')[0];
+    const filterDate = document.getElementById('filterDate');
+    const filterVenue = document.getElementById('filterVenue');
+    const filterStatus = document.getElementById('filterStatus');
+    const confirmationMessage = document.getElementById('confirmationMessage');
+    const errorMessage = document.getElementById('errorMessage');
+    const loadingMessage = document.getElementById('loadingMessage');
+    const startTime = document.getElementById('startTime');
+    const endTime = document.getElementById('endTime');
+    const submitBookingBtn = document.getElementById('submitBookingBtn');
+    
+    // Tabs
+    const bookingTab = document.getElementById('bookingTab');
+    const adminTab = document.getElementById('adminTab');
+    const bookingTabBtn = document.getElementById('bookingTabBtn');
+    const adminTabBtn = document.getElementById('adminTabBtn');
+    
+    // Admin sections
+    const adminLogin = document.getElementById('adminLogin');
+    const bookingsList = document.getElementById('bookingsList');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const adminPassword = document.getElementById('adminPassword');
+    
+    // Company password - in a real app, this would be server-side
+    const companyPassword = "TIAIC2025";
+    
+    // Format date for display
+    function formatDate(dateString) {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        return new Date(dateString).toLocaleDateString(undefined, options);
+    }
+    
+    // Generate a unique ID for bookings
+    function generateId() {
+        return 'booking_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+    
+    // Firebase configuration - replace with your own Firebase project details
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "your-project-id.firebaseapp.com",
+        projectId: "your-project-id",
+        storageBucket: "your-project-id.appspot.com",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID",
+        databaseURL: "https://your-project-id-default-rtdb.firebaseio.com"
+    };
+    
+    // Initialize Firebase
+    let database;
+    try {
+        firebase.initializeApp(firebaseConfig);
+        database = firebase.database();
+        console.log("Firebase initialized successfully");
+    } catch (error) {
+        console.error("Error initializing Firebase:", error);
+        errorMessage.textContent = 'Error connecting to booking service. Please try again later.';
+        errorMessage.classList.remove('hidden');
+    }
+    
+    // API functions using Firebase Realtime Database
+    async function fetchBookings() {
+        try {
+            if (!database) {
+                // Fallback to localStorage if Firebase fails to initialize
+                return SERVER_BOOKINGS;
+            }
             
-            // Set default times
-            startTime.value = "09:00";
-            endTime.value = "10:00";
+            // Get bookings from Firebase
+            const snapshot = await database.ref('bookings').once('value');
+            const bookingsData = snapshot.val() || {};
             
-            // Initialize existing bookings with status if not present
-            bookings.forEach(booking => {
-                if (!booking.hasOwnProperty('status')) {
-                    booking.status = 'pending';
-                }
+            // Convert object to array
+            return Object.keys(bookingsData).map(key => ({
+                id: key,
+                ...bookingsData[key]
+            }));
+        } catch (error) {
+            console.error('Error fetching bookings:', error);
+            errorMessage.textContent = 'Error fetching bookings. Please try again later.';
+            errorMessage.classList.remove('hidden');
+            
+            // Fallback to localStorage if Firebase fails
+            return SERVER_BOOKINGS;
+        }
+    }
+    
+    async function createBooking(bookingData) {
+        try {
+            // Add a unique ID to the booking if not using Firebase
+            const bookingId = bookingData.id || generateId();
+            
+            if (!database) {
+                // Fallback to localStorage if Firebase fails to initialize
+                bookingData.id = bookingId;
+                SERVER_BOOKINGS.push(bookingData);
+                localStorage.setItem('server_bookings', JSON.stringify(SERVER_BOOKINGS));
+                return bookingData;
+            }
+            
+            // Save to Firebase
+            await database.ref('bookings/' + bookingId).set({
+                ...bookingData,
+                createdAt: new Date().toISOString()
             });
-            localStorage.setItem('bookings', JSON.stringify(bookings));
             
-            // Initial display
-            if (localStorage.getItem('isLoggedIn') === 'true') {
-                adminLogin.classList.add('hidden');
-                bookingsList.classList.remove('hidden');
+            return { id: bookingId, ...bookingData };
+        } catch (error) {
+            console.error('Error creating booking:', error);
+            errorMessage.textContent = 'Error saving your booking. Please try again later.';
+            errorMessage.classList.remove('hidden');
+            
+            // Fallback to localStorage
+            try {
+                bookingData.id = bookingData.id || generateId();
+                SERVER_BOOKINGS.push(bookingData);
+                localStorage.setItem('server_bookings', JSON.stringify(SERVER_BOOKINGS));
+                return bookingData;
+            } catch (fallbackError) {
+                console.error('Fallback error:', fallbackError);
+                throw error;
+            }
+        }
+    }
+    
+    async function updateBooking(id, updatedData) {
+        try {
+            if (!database) {
+                // Fallback to localStorage if Firebase fails to initialize
+                const index = SERVER_BOOKINGS.findIndex(b => b.id === id);
+                if (index !== -1) {
+                    SERVER_BOOKINGS[index] = { ...SERVER_BOOKINGS[index], ...updatedData };
+                    localStorage.setItem('server_bookings', JSON.stringify(SERVER_BOOKINGS));
+                    return SERVER_BOOKINGS[index];
+                }
+                throw new Error('Booking not found');
+            }
+            
+            // Update in Firebase
+            await database.ref('bookings/' + id).update({
+                ...updatedData,
+                updatedAt: new Date().toISOString()
+            });
+            
+            // Get updated booking
+            const snapshot = await database.ref('bookings/' + id).once('value');
+            return { id, ...snapshot.val() };
+        } catch (error) {
+            console.error('Error updating booking:', error);
+            errorMessage.textContent = 'Error updating booking. Please try again later.';
+            errorMessage.classList.remove('hidden');
+            
+            // Fallback to localStorage
+            try {
+                const index = SERVER_BOOKINGS.findIndex(b => b.id === id);
+                if (index !== -1) {
+                    SERVER_BOOKINGS[index] = { ...SERVER_BOOKINGS[index], ...updatedData };
+                    localStorage.setItem('server_bookings', JSON.stringify(SERVER_BOOKINGS));
+                    return SERVER_BOOKINGS[index];
+                }
+                throw new Error('Booking not found');
+            } catch (fallbackError) {
+                console.error('Fallback error:', fallbackError);
+                throw error;
+            }
+        }
+    }
+    
+    async function deleteBooking(id) {
+        try {
+            if (!database) {
+                // Fallback to localStorage if Firebase fails to initialize
+                const index = SERVER_BOOKINGS.findIndex(b => b.id === id);
+                if (index !== -1) {
+                    SERVER_BOOKINGS.splice(index, 1);
+                    localStorage.setItem('server_bookings', JSON.stringify(SERVER_BOOKINGS));
+                    return true;
+                }
+                throw new Error('Booking not found');
+            }
+            
+            // Delete from Firebase
+            await database.ref('bookings/' + id).remove();
+            return true;
+        } catch (error) {
+            console.error('Error deleting booking:', error);
+            errorMessage.textContent = 'Error cancelling booking. Please try again later.';
+            errorMessage.classList.remove('hidden');
+            
+            // Fallback to localStorage
+            try {
+                const index = SERVER_BOOKINGS.findIndex(b => b.id === id);
+                if (index !== -1) {
+                    SERVER_BOOKINGS.splice(index, 1);
+                    localStorage.setItem('server_bookings', JSON.stringify(SERVER_BOOKINGS));
+                    return true;
+                }
+                throw new Error('Booking not found');
+            } catch (fallbackError) {
+                console.error('Fallback error:', fallbackError);
+                throw error;
+            }
+        }
+    }
+    
+    // Setup real-time updates
+    function setupRealTimeUpdates() {
+        if (!database) return;
+        
+        // Listen for changes in the bookings collection
+        database.ref('bookings').on('value', function(snapshot) {
+            console.log('Received real-time update');
+            // Only refresh if we're on the admin page and logged in
+            if (!adminTab.classList.contains('hidden') && !bookingsList.classList.contains('hidden')) {
                 displayBookings();
             }
         });
-    </script>
-</body>
-</html>
+    }
+    
+    // Display bookings in the table
+    async function displayBookings() {
+        try {
+            loadingMessage.classList.remove('hidden');
+            bookingsTable.innerHTML = '';
+            
+            // Get bookings from API
+            const bookings = await fetchBookings();
+            
+            // Get filter values
+            const dateFilter = filterDate.value;
+            const venueFilter = filterVenue.value;
+            const statusFilter = filterStatus.value;
+            
+            // Filter bookings
+            let filteredBookings = bookings;
+            
+            if (dateFilter) {
+                filteredBookings = filteredBookings.filter(booking => booking.eventDate === dateFilter);
+            }
+            
+            if (venueFilter) {
+                filteredBookings = filteredBookings.filter(booking => booking.venue === venueFilter);
+            }
+            
+            if (statusFilter) {
+                filteredBookings = filteredBookings.filter(booking => booking.status === statusFilter);
+            }
+            
+            // Sort bookings by date (most recent first)
+            filteredBookings.sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
+            
+            loadingMessage.classList.add('hidden');
+            
+            // Add bookings to table
+            if (filteredBookings.length === 0) {
+                const row = bookingsTable.insertRow();
+                const cell = row.insertCell(0);
+                cell.colSpan = 10;
+                cell.textContent = 'No bookings found';
+                cell.style.textAlign = 'center';
+                return;
+            }
+            
+            filteredBookings.forEach((booking) => {
+                const row = bookingsTable.insertRow();
+                
+                // Add class for confirmed bookings
+                if (booking.status === 'confirmed') {
+                    row.classList.add('confirmed-booking');
+                }
+                
+                row.insertCell(0).textContent = formatDate(booking.eventDate);
+                row.insertCell(1).textContent = `${booking.startTime} - ${booking.endTime}`;
+                row.insertCell(2).textContent = booking.venue;
+                row.insertCell(3).textContent = booking.groupSize;
+                row.insertCell(4).textContent = booking.bookedBy;
+                row.insertCell(5).textContent = booking.email;
+                
+                // Status cell
+                const statusCell = row.insertCell(6);
+                const statusLabel = document.createElement('span');
+                statusLabel.textContent = booking.status === 'confirmed' ? 'Confirmed' : 'Pending';
+                statusLabel.classList.add('status-label');
+                statusLabel.classList.add(booking.status === 'confirmed' ? 'status-confirmed' : 'status-pending');
+                statusCell.appendChild(statusLabel);
+                
+                // Notes cell
+                row.insertCell(7).textContent = booking.notes || '';
+                
+                // Admin notes cell
+                const adminNotesCell = row.insertCell(8);
+                const adminNotesInput = document.createElement('textarea');
+                adminNotesInput.value = booking.adminNotes || '';
+                adminNotesInput.rows = 2;
+                adminNotesInput.style.width = '100%';
+                adminNotesInput.addEventListener('change', async function() {
+                    try {
+                        await updateBooking(booking.id, { 
+                            adminNotes: adminNotesInput.value 
+                        });
+                    } catch (error) {
+                        console.error('Failed to update admin notes:', error);
+                    }
+                });
+                adminNotesCell.appendChild(adminNotesInput);
+                
+                // Actions cell
+                const actionsCell = row.insertCell(9);
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'action-buttons';
+                
+                // Cancel button
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Cancel';
+                deleteButton.style.backgroundColor = '#e74c3c';
+                deleteButton.onclick = async function() {
+                    if (confirm('Are you sure you want to cancel this booking?')) {
+                        try {
+                            await deleteBooking(booking.id);
+                            displayBookings();
+                        } catch (error) {
+                            console.error('Failed to cancel booking:', error);
+                        }
+                    }
+                };
+                actionsDiv.appendChild(deleteButton);
+                
+                // Confirm button - only show if not already confirmed
+                if (booking.status !== 'confirmed') {
+                    const confirmButton = document.createElement('button');
+                    confirmButton.textContent = 'Confirm';
+                    confirmButton.style.backgroundColor = '#27ae60';
+                    confirmButton.onclick = async function() {
+                        if (confirm('Confirm this booking? This will block this time slot from future bookings.')) {
+                            try {
+                                await updateBooking(booking.id, { status: 'confirmed' });
+                                displayBookings();
+                            } catch (error) {
+                                console.error('Failed to confirm booking:', error);
+                            }
+                        }
+                    };
+                    actionsDiv.appendChild(confirmButton);
+                }
+                
+                actionsCell.appendChild(actionsDiv);
+            });
+        } catch (error) {
+            console.error('Error displaying bookings:', error);
+            loadingMessage.classList.add('hidden');
+            errorMessage.classList.remove('hidden');
+        }
+    }
+    
+    // Check if two time ranges overlap
+    function isTimeOverlap(startA, endA, startB, endB) {
+        return (startA < endB && endA > startB);
+    }
+    
+    // Check if booking time is valid
+    function isValidBookingTime(start, end) {
+        // Ensure end time is after start time
+        return start < end;
+    }
+    
+    // Check if there's a confirmed booking that conflicts with the requested time
+    async function hasBookingConflict(date, venue, startTime, endTime) {
+        try {
+            const bookings = await fetchBookings();
+            
+            return bookings.some(booking => 
+                booking.eventDate === date && 
+                booking.venue === venue && 
+                isTimeOverlap(startTime, endTime, booking.startTime, booking.endTime)
+            );
+        } catch (error) {
+            console.error('Error checking for booking conflicts:', error);
+            return false;
+        }
+    }
+    
+    // Handle form submission
+    bookingForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Disable submit button to prevent double submission
+        submitBookingBtn.disabled = true;
+        submitBookingBtn.textContent = 'Processing...';
+        
+        try {
+            const eventDate = document.getElementById('eventDate').value;
+            const startTimeValue = document.getElementById('startTime').value;
+            const endTimeValue = document.getElementById('endTime').value;
+            const venue = document.getElementById('venue').value;
+            const groupSize = document.getElementById('groupSize').value;
+            const bookedBy = document.getElementById('bookedBy').value;
+            const email = document.getElementById('email').value;
+            const notes = document.getElementById('notes').value;
+            
+            // Hide any previous error messages
+            errorMessage.classList.add('hidden');
+            
+            // Validate time inputs
+            if (!startTimeValue || !endTimeValue) {
+                alert('Please select both start and end times');
+                return;
+            }
+            
+            // Check if end time is after start time
+            if (!isValidBookingTime(startTimeValue, endTimeValue)) {
+                alert('End time must be after start time');
+                return;
+            }
+            
+            // Basic validation for group size
+            const maxCapacity = {
+                'Training Room': 24,
+                'Roadshow Room': 50,
+                'Meeting Room A': 10,
+                'Meeting Room B': 6,
+                'Meeting Room VIP': 8,
+                'Pantry Area': 10,
+                'Open Coach Space': 20,
+                'Tea Room': 20
+            };
+            
+            if (parseInt(groupSize) > maxCapacity[venue]) {
+                alert(`This venue has a maximum capacity of ${maxCapacity[venue]} people. Please select a different venue or reduce your group size.`);
+                return;
+            }
+            
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                alert('Please enter a valid email address');
+                return;
+            }
+            
+            // Check for booking conflicts
+            const hasConflict = await hasBookingConflict(eventDate, venue, startTimeValue, endTimeValue);
+            
+            if (hasConflict) {
+                alert('This venue already has a booking that overlaps with your selected time period. Please choose a different time or venue.');
+                return;
+            }
+            
+            // Create new booking with pending status
+            const newBooking = {
+                eventDate,
+                startTime: startTimeValue,
+                endTime: endTimeValue,
+                venue,
+                groupSize,
+                bookedBy,
+                email,
+                notes,
+                adminNotes: '',
+                status: 'pending',
+                createdAt: new Date().toISOString()
+            };
+            
+            // Save to the centralized system
+            await createBooking(newBooking);
+            
+            // Reset form and show confirmation
+            bookingForm.reset();
+            bookingForm.style.display = 'none';
+            confirmationMessage.classList.remove('hidden');
+            
+            // Reset form after 5 seconds
+            setTimeout(() => {
+                bookingForm.style.display = 'block';
+                confirmationMessage.classList.add('hidden');
+            }, 5000);
+        } catch (error) {
+            console.error('Error submitting booking:', error);
+            errorMessage.classList.remove('hidden');
+        } finally {
+            // Re-enable the submit button
+            submitBookingBtn.disabled = false;
+            submitBookingBtn.textContent = 'Book Venue';
+        }
+    });
+    
+    // Set up filter change handlers
+    filterDate.addEventListener('change', displayBookings);
+    filterVenue.addEventListener('change', displayBookings);
+    filterStatus.addEventListener('change', displayBookings);
+    
+    // Tab switching
+    bookingTabBtn.addEventListener('click', function() {
+        bookingTab.classList.remove('hidden');
+        adminTab.classList.add('hidden');
+        bookingTabBtn.classList.add('active');
+        adminTabBtn.classList.remove('active');
+        errorMessage.classList.add('hidden');
+    });
+    
+    adminTabBtn.addEventListener('click', function() {
+        bookingTab.classList.add('hidden');
+        adminTab.classList.remove('hidden');
+        bookingTabBtn.classList.remove('active');
+        adminTabBtn.classList.add('active');
+        errorMessage.classList.add('hidden');
+    });
+    
+    // Admin login
+    loginBtn.addEventListener('click', function() {
+        if (adminPassword.value === companyPassword) {
+            adminLogin.classList.add('hidden');
+            bookingsList.classList.remove('hidden');
+            displayBookings();
+            // Save login state (in a real app, use a proper auth token)
+            sessionStorage.setItem('isAdminLoggedIn', 'true');
+        } else {
+            alert('Incorrect password. Access denied.');
+        }
+    });
+    
+    // Logout
+    logoutBtn.addEventListener('click', function() {
+        adminLogin.classList.remove('hidden');
+        bookingsList.classList.add('hidden');
+        adminPassword.value = '';
+        // Clear login state
+        sessionStorage.removeItem('isAdminLoggedIn');
+    });
+    
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('eventDate').setAttribute('min', today);
+    filterDate.setAttribute('min', today);
+    
+    // Check if admin is already logged in
+    if (sessionStorage.getItem('isAdminLoggedIn') === 'true') {
+        adminLogin.classList.add('hidden');
+        bookingsList.classList.remove('hidden');
+        displayBookings();
+    }
+    
+    // Setup real-time updates for Firebase
+    setupRealTimeUpdates();
+});
